@@ -1,0 +1,56 @@
+yarn init
+yarn add express
+yarn add mysql
+yarn add morgan winston config
+---------------------
+Body parse not required from express 4.16
+app.use(express.json()); replaces app.use(bodyparser.json());
+
+app.use(bodyParser.urlencoded({extended: true}));
+  => app.use(express.urlencoded()); //Parse URL-encoded bodies
+---------------------
+
+
+Update package.json - start script
+
+ "main": "./src/server.js",
+"start": "export NODE_ENV=dev&& nodemon"
+
+node server.js
+--------------------------------------------
+yarn add camelcase-keys
+yarn add snakecase-keys
+-------------------------------------------
+
+ lsof -i -P -n
+query who is using the PORTS......
+------------------------------------------
+Taken a printscreen of error sent to client on NULL reference found in baseRouter.
+It might require, rewriting generic ERROR page.
+
+TO DO
+--------------------------------------------
+
+https://meanstackdeveloper.in/authentication-using-jwt-from-reactjs-single-page-application-spa-to-nodejs/express.html
+https://stackabuse.com/authentication-and-authorization-with-jwts-in-express-js/
+
+
+yarn add jsonwebtoken
+-----------------------------------
+yarn add express-bouncer
+
+yarn add bcrypt
+-------------------------------------------------------
+ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key
+# Don't add passphrase
+openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
+cat jwtRS256.key
+cat jwtRS256.key.pub
+-------------------------------------------------------------------
+https://gist.github.com/ygotthilf/baa58da5c3dd1f69fae9
+-----------------------------------------------------------------------------
+Use mocha and chai to test APIs end to end, but the problem is code is too verbose and tiring.
+We have to think about writing some wrappers around them.
+
+
+sriram/nosecret

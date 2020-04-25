@@ -1,0 +1,6 @@
+{
+  "connect_url" : "mysql://ram:sriram@localhost/dev_sia?debug=true",
+  "jwtExpiry": "500m",
+  "jwtTokenFile": "./config/keys/jwtRS256.key",
+  "jwtPublicKey" :"./config/keys/jwtRS256.key.pub"
+}
