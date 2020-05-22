@@ -1,13 +1,6 @@
-const bm = require('./baseModel.js');
+const { buildBaseModel } = require("./baseModel");
 
-let conn  = global.db;
+let conn = global.db;
 const log = global.log;
 
-//Task object constructor
-class User extends bm.SIABaseModel {
-    constructor(){
-        super('users');
-    }
-};
-
-module.exports = {User};
+module.exports = { userModel: buildBaseModel("users") };

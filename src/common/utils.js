@@ -1,7 +1,7 @@
-const winston = require('../../config/winston');
+const winston = require("../../config/winston");
 
 const log = global.log;
-const errLog =global.errLog;
+const errLog = global.errLog;
 
 /*
 this is not a regular deep copy program
@@ -20,7 +20,9 @@ function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
   let copyAllFieldsFlag = false;
 
   if (ignoreFields && !Array.isArray(ignoreFields)) {
-    throw new Error('3rd argument to docPropUpdater should be an array of field names or can be omitted - but nothing else!!!');
+    throw new Error(
+      "3rd argument to docPropUpdater should be an array of field names or can be omitted - but nothing else!!!"
+    );
   }
 
   if (!Array.isArray(ignoreFields)) {
@@ -35,13 +37,13 @@ function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
 
   // *****************ACTUAL ASSIGNMENT************************************* //
   for (let i = 0; i < keys.length; i++) {
-    if (copyAllFieldsFlag || (keys[i] in doc)) {
+    if (copyAllFieldsFlag || keys[i] in doc) {
       if (!ignoreFieldArray.includes(keys[i])) {
-      // we want to change the doc passed to the function, so diable no-param-reassign
+        // we want to change the doc passed to the function, so diable no-param-reassign
 
         // Do not do any assignment if values are same
         if (doc[keys[i]] !== prop[keys[i]]) {
-        // eslint-disable-next-line no-param-reassign
+          // eslint-disable-next-line no-param-reassign
           doc[keys[i]] = prop[keys[i]];
         }
       }
@@ -51,7 +53,6 @@ function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
 
   return doc;
 }
-
 
 //token-verfier.js
 //@user-auth
@@ -98,4 +99,4 @@ message: 'UnExpected error'
 
 */
 
-module.exports = { docPropUpdater ,snakeToCamel, camelToSnake};
+module.exports = { docPropUpdater };

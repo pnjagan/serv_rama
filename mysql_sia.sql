@@ -125,18 +125,12 @@ drop table customers;
 
 CREATE TABLE customers(
 id INT PRIMARY KEY  AUTO_INCREMENT
-,cust_num    VARCHAR(100)
-,buyer_name  VARCHAR(100)
-,rcv_name VARCHAR(100)
-,rcv_vat VARCHAR(100)
-,rcv_exr VARCHAR(100)
-,rcv_cst VARCHAR(100)
-,byr_vat VARCHAR(100)
-,byr_exr VARCHAR(100)
-,byr_cst VARCHAR(100)
-,rcv_addr1 VARCHAR(100)
-,rcv_addr2 VARCHAR(100)
-,rcv_addr3 VARCHAR(100)
-,destination VARCHAR(100)
+,customer_num    VARCHAR(100)
+,customer_name  VARCHAR(100)
+,phone      VARCHAR(100)
+,email      VARCHAR(100)
+,address_line1 VARCHAR(100)
+,address_line2 VARCHAR(100)
+,address_line3 VARCHAR(100)
 );
 
