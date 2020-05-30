@@ -1,7 +1,15 @@
 const express = require("express");
 const log = global.log;
 const util = require("util");
-
+const produce = require("immer");
+const {
+  internalErrorMsg,
+  badRequestErrorMsg,
+  authorizationErrorMsg,
+  resourceNotFoundErrorMsg,
+  normalResponse,
+  responseHandler,
+} = require("../common/utils");
 //API design guidelines
 //https://hackernoon.com/restful-api-designing-guidelines-the-best-practices-60e1d954e7c9
 // 1.Add version number to API end point
@@ -23,15 +31,10 @@ function buildBaseRouter(model) {
   baseRouter.post("/", (req, res) => {
     model.create(req.body).then(
       (s) => {
-        res.json(s);
+        responseHandler(res, s);
       },
       (r) => {
-        log("Reject Object :" + util.inspect(r));
-        log("Reject Obj JSON :" + JSON.stringify(r));
-
-        res.status(500).json({
-          message: "Operation failed , please refer the application log!",
-        });
+        responseHandler(res, r);
       }
     );
   });
@@ -40,15 +43,10 @@ function buildBaseRouter(model) {
   baseRouter.get("/", (req, res) => {
     model.getAll().then(
       (s) => {
-        res.json({ result: s });
+        responseHandler(res, s);
       },
       (r) => {
-        log("Reject Object :" + util.inspect(r));
-        log("Reject Obj JSON :" + JSON.stringify(r));
-
-        res.status(500).json({
-          message: "Operation failed , please refer the application log!",
-        });
+        responseHandler(res, r);
       }
     );
   });
@@ -57,15 +55,10 @@ function buildBaseRouter(model) {
   baseRouter.get("/:id", (req, res) => {
     model.getById(req.params.id).then(
       (s) => {
-        res.json({ result: s });
+        responseHandler(res, s);
       },
       (r) => {
-        log("Reject Object :" + util.inspect(r));
-        log("Reject Obj JSON :" + JSON.stringify(r));
-
-        res.status(500).json({
-          message: "Operation failed , please refer the application log!",
-        });
+        responseHandler(res, r);
       }
     );
   });
@@ -74,15 +67,10 @@ function buildBaseRouter(model) {
   baseRouter.delete("/:id", (req, res) => {
     model.deleteById(req.params.id).then(
       (s) => {
-        res.json({ result: s });
+        responseHandler(res, s);
       },
       (r) => {
-        log("Reject Object :" + util.inspect(r));
-        log("Reject Obj JSON :" + JSON.stringify(r));
-
-        res.status(500).json({
-          message: "Operation failed , please refer the application log!",
-        });
+        responseHandler(res, r);
       }
     );
   });
@@ -93,15 +81,10 @@ function buildBaseRouter(model) {
 
     model.updateById(req.params.id, req.body).then(
       (s) => {
-        res.json({ result: s });
+        responseHandler(res, s);
       },
       (r) => {
-        log("Reject Object :" + util.inspect(r));
-        log("Reject Obj JSON :" + JSON.stringify(r));
-
-        res.status(500).json({
-          message: "Operation failed , please refer the application log!",
-        });
+        responseHandler(res, r);
       }
     );
   });

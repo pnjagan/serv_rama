@@ -8,9 +8,20 @@ const { snakeCase } = require("snake-case");
 const camelCase = require("camelcase");
 
 const tableRelations = require("./table_relations");
+const { queryPromise } = require("./queryPromise");
+const R = require("ramda");
 
 let conn = global.db;
 const log = global.log;
+
+const {
+  internalErrorMsg,
+  badRequestErrorMsg,
+  authorizationErrorMsg,
+  resourceNotFoundErrorMsg,
+  normalResponse,
+  // responseHandler,
+} = require("../common/utils");
 
 /*
 
@@ -114,8 +125,9 @@ let bModel = {
           snakeCaseKeys(newSIABaseModelP),
           function (err, result) {
             if (err) {
-              log("master insert failed" + err);
-              rej(err);
+              log("master insert failed", err);
+              //# MASK SQL ERROR, keep the error status code.
+              rej("Unexpected error in the server, please contact the Admin.");
             } else {
               log("master insert success");
               res({ result: result.insertId });
@@ -147,7 +159,11 @@ let bModel = {
                 childRowM,
                 function (err, result) {
                   if (err) {
-                    rej(err);
+                    //rej(err);
+                    //MASK the SQL error
+                    rej(
+                      "Unexpected error in the server, please contact the Admin."
+                    );
                   } else {
                     res({ result: result.insertId });
                   }
@@ -421,6 +437,7 @@ Modes :
         */
   },
 
+  /*
   /////////////get by attribute///////////////////////
   getByAttribute: function (attribName, attribValue) {
     // log(`Table name in getAll is ${}`);
@@ -472,9 +489,56 @@ Modes :
             ) //map ends
           ); // the array of Promise is wrapped inside another Promise
         }
-        // , ( err) => {/* Error of main record fetch */}
+        // , ( err) => {}
       );
     }
+  },
+};
+
+*/
+
+  /////////////get by attribute///////////////////////
+  getByAttribute: async function getByAttribute(attribName, attribValue) {
+    // log(`Table name in getAll is ${}`);
+    //let tn = this.tableName;
+    const modelRef = this;
+    /*
+  trying to describe the function in function terms
+
+  query the correct table -> results camel cased -> cond ([ has child , <> ] ,  [has no child , <>])
+
+  */
+
+    const parentResults = await queryPromise(
+      `select * from ${modelRef.tableName} where ${attribName} = ?`,
+      [attribValue]
+    ).then((res) => camelcaseKeys(res));
+
+    if (!this.hasChild) {
+      return parentResults;
+    }
+
+    return await Promise.all(
+      parentResults.map((cv) => {
+        return queryPromise(
+          `select * from ${modelRef.childTable} 
+    where ${modelRef.child_link} = ?`,
+          cv[modelRef.parent_link]
+        ).then(
+          (res) => {
+            return {
+              ...cv,
+              [camelCase(modelRef.childTable)]: camelcaseKeys(res),
+            };
+          },
+          (rej) => {
+            log("Error in create", rej);
+            //#MASK SQL errors
+            return Promise.reject("Unexpected server error, contact Admin");
+          }
+        );
+      })
+    );
   },
 };
 

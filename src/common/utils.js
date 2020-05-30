@@ -1,102 +1,90 @@
-const winston = require("../../config/winston");
+/* Immer does exactly what doc updated does, only much BETTER */
+//function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
+// const winston = require("../../config/winston");
 
 const log = global.log;
 const errLog = global.errLog;
+//no use export - just a place holder
+
+const { produce } = require("immer");
 
 /*
-this is not a regular deep copy program
 
-main characters...
-1.by default if doc does not contain a property in prop , those properties are NOT created in doc
-  can be overridden by copyAllFields FLAG
-2.if prop does not contain a propert in doc , those properties are LEFT AS IS created in doc
-3.can exclude unwanted fields - via a ignoreFields
-4.this procedure modifies the passed argument. Also as a convinience, it returns the fields as well
-5.will not update (or touch) a value if it is same as an existing value
+{
+  status : "This field will be sent by the model but stripped off by the router before forwarding - 200/400/401/404/500"
+  result : {
+   // reflect back columns 
+  },
+  requestError : {
+   // Request level failure 
+  },
+  detailError : {
+    // field level error, structure to reflect the structure of the from like..
+    field1 : error1,
+    field2 : error2
+  }
+}
+
 */
-function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
-  const keys = Object.keys(prop);
-  let ignoreFieldArray = null;
-  let copyAllFieldsFlag = false;
 
-  if (ignoreFields && !Array.isArray(ignoreFields)) {
-    throw new Error(
-      "3rd argument to docPropUpdater should be an array of field names or can be omitted - but nothing else!!!"
+function internalErrorMsg() {
+  return {
+    status: 500,
+    requestError:
+      "Unexpected error in processing the request, please contact the support",
+  };
+}
+
+function badRequestErrorMsg() {
+  return {
+    status: 400,
+    requestError: "The request is invalid, please check your request.",
+  };
+}
+
+function authorizationErrorMsg(error) {
+  return {
+    status: 401,
+    requestError: error,
+  };
+}
+
+function resourceNotFoundErrorMsg(error) {
+  return {
+    status: 404,
+    requestError: error,
+  };
+}
+
+/* Response should have everything but status field*/
+function normalResponse(response) {
+  return {
+    status: 200,
+    ...response,
+  };
+}
+
+//Impure, sents a response
+function responseHandler(httpRes, respObject) {
+  if (respObject.status == null) {
+    httpRes.status(500).json({
+      REQUEST_ERROR:
+        "Unexpected error while processing the request, please contact support",
+    });
+  } else {
+    httpRes.status(respObject.status).json(
+      produce(respObject, (d) => {
+        delete d.status;
+      })
     );
   }
-
-  if (!Array.isArray(ignoreFields)) {
-    ignoreFieldArray = [];
-  } else {
-    ignoreFieldArray = ignoreFields;
-  }
-
-  if (copyAllFields) {
-    copyAllFieldsFlag = true;
-  }
-
-  // *****************ACTUAL ASSIGNMENT************************************* //
-  for (let i = 0; i < keys.length; i++) {
-    if (copyAllFieldsFlag || keys[i] in doc) {
-      if (!ignoreFieldArray.includes(keys[i])) {
-        // we want to change the doc passed to the function, so diable no-param-reassign
-
-        // Do not do any assignment if values are same
-        if (doc[keys[i]] !== prop[keys[i]]) {
-          // eslint-disable-next-line no-param-reassign
-          doc[keys[i]] = prop[keys[i]];
-        }
-      }
-    }
-  }
-  // ***********************ACTUAL ASSIGNMENT******************************* //
-
-  return doc;
 }
 
-//token-verfier.js
-//@user-auth
-
-/*
-
-const jwt = require('jsonwebtoken')
-const config = require('../config/config.json')
-const User = require('../models/user')
-module.exports = function (req, res, next) {
-var token = req.body.token || req.query.token || req.headers['x-access-token']
-if (!token) {
-return res.status(403).send({
-success: false,
-message: 'No token provided'
-})
-}
-jwt.verify(token, config.secret, function (err, decoded) {
-if (err) {
-return res.json({
-success: false,
-message: 'Failed to authenticate token'
-})
-}
-let { id } = decoded
-User.findOne({where: { id: id }})
-.then(function (user) {
-//console.log('user is this ',user)
-if (user) {
-req.user = user
-next()
-return
-}
-return res.json({
-success: false,
-message: 'No Such User'
-})
-}).catch((() => res.json({
-success: false,
-message: 'UnExpected error'
-})))
-})
-}
-
-*/
-
-module.exports = { docPropUpdater };
+module.exports = {
+  internalErrorMsg,
+  badRequestErrorMsg,
+  authorizationErrorMsg,
+  resourceNotFoundErrorMsg,
+  normalResponse,
+  responseHandler,
+};

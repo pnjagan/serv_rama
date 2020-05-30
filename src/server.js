@@ -62,9 +62,11 @@ app.use("/", verifyToken);
 //THIS ROUTE is for VALIDATING IF TOKEN is VALID  @user-auth
 
 const { buildBaseModel } = require("./models/baseModel");
+const { customerModel } = require("./models/customerModel");
 const { buildBaseRouter } = require("./routes/baseRouter");
 
-app.use("/customers", buildBaseRouter(buildBaseModel("customers")));
+app.use("/customers", buildBaseRouter(customerModel));
+
 app.use("/items", buildBaseRouter(buildBaseModel("items")));
 app.use("/params", buildBaseRouter(buildBaseModel("params")));
 app.use("/invoices", buildBaseRouter(buildBaseModel("invoices")));

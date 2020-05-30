@@ -14,9 +14,11 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-bouncer": "^0.2.0",
+    "immer": "^6.0.9",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "mysql": "^2.18.1",
+    "ramda": "^0.27.0",
     "snake-case": "^3.0.3",
     "snakecase-keys": "^3.1.2",
     "winston": "^3.2.1"

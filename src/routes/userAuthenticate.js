@@ -97,7 +97,8 @@ userAuth.post("/signup", bouncer.block, function (req, res) {
 userAuth.post("/login", bouncer.block, function (req, res) {
   const userData = req.body;
   // const password = req.body.password;
-  log("Complete REQ", req);
+
+  //log("Complete REQ", req); // prints too much details
 
   //using weak equals to check for both undefined and null
   if (
@@ -131,7 +132,13 @@ userAuth.post("/login", bouncer.block, function (req, res) {
         let userDataDB = userRS[0]; //JSON.parse(JSON.stringify(snakeCaseKeys(userData)));
         // delete userDataDB.password;
         // delete userDataDB.id;
-        log("user to validate :" + util.inspect(userDataDB));
+        log("user to validate :", JSON.stringify(userDataDB));
+        log(
+          "args to bcrypt compare :",
+          userData.password,
+          " - ",
+          userDataDB.userHash
+        );
 
         bcrypt.compare(userData.password, userDataDB.userHash, function (
           errBcrypt,

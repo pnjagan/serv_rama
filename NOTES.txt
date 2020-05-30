@@ -54,3 +54,39 @@ We have to think about writing some wrappers around them.
 
 
 sriram/nosecret
+--------------------------------------------------
+HTTP status codes:
+200 - OK
+400 - BAD request
+401 - unauthorized
+404 - not found
+500 - internal error
+
+Masking SQL error
+----------------------
+MASK SQL error by handling the reject from SQL promise and returning a Promise.reject("Unexpected server error")
+
+Validation errors:
+---------------------
+Should return 200 - with proper message syntax
+
+HTTP Response
+--------------
+This structure common for all the 
+
+{
+  status : /* This field will be sent by the model but stripped off by the router before forwarding - 200/400/401/404/500 */ 
+  result : {
+    /* reflect back columns */
+  },
+  requestError : {
+    /* Request level failure */
+  },
+  detailError : {
+    /* field level error, structure to reflect the structure of the from like..
+    field1 : error1,
+    field2 : error2
+  
+    */
+  }
+}
