@@ -1,4 +1,4 @@
-const winston = require("../../config/winston");
+// const winston = require("../../config/winston");
 const util = require("util");
 
 const snakeCaseKeys = require("snakecase-keys");
@@ -11,17 +11,10 @@ const tableRelations = require("./table_relations");
 const { queryPromise } = require("./queryPromise");
 const R = require("ramda");
 
-let conn = global.db;
-const log = global.log;
+const conn = require("../common/dbconn").db;
 
-const {
-  internalErrorMsg,
-  badRequestErrorMsg,
-  authorizationErrorMsg,
-  resourceNotFoundErrorMsg,
-  normalResponse,
-  // responseHandler,
-} = require("../common/utils");
+const { log } = require("../../config/winston");
+const { statusCodes, responseHandler } = require("../common/utils");
 
 /*
 
@@ -39,7 +32,7 @@ TO-DO:
 Relationship can be supported multi-level if object relation ship is captured instead of at table level.
 It is easy, only constructor objects to be stored in the MAP
 
-MySQL driver supports connection pooling - not used right.
+MySQL driver supports connection pooling - not used right now.
 It is possible to get a connection the pool dedicated for 1 tranasaction.
 connection.release(); // will free a connection taken from the Pool for re-use.
 CANNOT use pool.query as it will release a connection after a query, need to retain it to complete a transaction.
@@ -55,10 +48,13 @@ function startTransaction(conn) {
     conn.query({ sql: "START TRANSACTION", value: null }, function (error) {
       if (!error) {
         log("trxn started");
-        res("trxn started");
+        res({ message: "trxn started", status: statusCodes.NORMAL }); //Ignored
       } else {
         log("trxn could not be started");
-        rej("trxn could not be started");
+        rej({
+          requestError: "trxn could not be started",
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+        });
       }
     });
   });
@@ -72,7 +68,10 @@ function commitTransaction(conn, retValue) {
         res(retValue);
       } else {
         log("COMMIT failed");
-        rej("trxn could not be committed");
+        rej({
+          message: "trxn could not be committed",
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+        });
       }
     });
   });
@@ -88,7 +87,13 @@ function rollbackTransaction(conn, retValue) {
         rej(retValue);
       } else {
         log("Rollback failed");
-        rej("trxn could not be Rolled back");
+
+        // rej("trxn could not be Rolled back");
+
+        rej({
+          message: "trxn could not be Rolled back",
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+        });
       }
     });
   });
@@ -127,10 +132,17 @@ let bModel = {
             if (err) {
               log("master insert failed", err);
               //# MASK SQL ERROR, keep the error status code.
-              rej("Unexpected error in the server, please contact the Admin.");
+              rej({
+                requestError:
+                  "Unexpected error in the server, please contact the Admin.",
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+              });
             } else {
               log("master insert success");
-              res({ result: result.insertId });
+              res({
+                status: statusCodes.NORMAL,
+                data: { id: result.insertId },
+              });
             }
           }
         );
@@ -143,13 +155,15 @@ let bModel = {
     if (!this.hasChild) {
       finalP = mainP;
     } else {
-      finalP = mainP.then((parentId) => {
-        log("parent Id" + util.inspect(parentId));
+      finalP = mainP.then((parentResult) => {
+        const parentId = parentResult.data.id;
+        log("parent Id :" + util.inspect(parentId));
+
         return Promise.all(
           newSIABaseModel[camelCase(modelRef.childTable)].map((childRow) => {
             let childRowM = {};
             Object.assign(childRowM, snakeCaseKeys(childRow), {
-              [modelRef.child_link]: parentId.result,
+              [modelRef.child_link]: parentId,
             });
 
             return new Promise(function (res, rej) {
@@ -161,17 +175,24 @@ let bModel = {
                   if (err) {
                     //rej(err);
                     //MASK the SQL error
-                    rej(
-                      "Unexpected error in the server, please contact the Admin."
-                    );
+                    rej({
+                      requestError:
+                        "Unexpected error in the server, please contact the Admin.",
+                      status: statusCodes.INTERNAL_SERVER_ERROR,
+                    });
                   } else {
-                    res({ result: result.insertId });
+                    res({
+                      status: statusCodes.NORMAL,
+                      data: { id: result.insertId },
+                    });
                   }
                 }
               );
             });
           })
-        );
+        ).then((res) => {
+          return { parentId };
+        });
       });
     }
     //ACTUAL INSERT END
@@ -181,11 +202,17 @@ let bModel = {
         log(
           "insert operation success, tryng to commit " + util.inspect(result)
         );
-        return commitTransaction(conn, result);
+        return commitTransaction(conn, {
+          data: { id: result.parentId },
+          status: statusCodes.NORMAL,
+        });
       },
       (insertErr) => {
         log("insert operation failed, trying to rollback");
-        return rollbackTransaction(conn, insertErr);
+        return rollbackTransaction(conn, {
+          requestError: "Insert operation failed",
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+        });
       }
     );
   },
@@ -201,15 +228,19 @@ let bModel = {
     let finalP = null;
 
     let mainP = startTransaction(conn).then((startTrx) => {
+      log("Delete TRx started");
       return new Promise(function (res, rej) {
         conn.query(
           `delete from ${modelRef.tableName} where id = ?`,
           [id],
           function (err, result, fields) {
             if (err) {
-              rej(err);
+              rej({
+                requestError: err,
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+              });
             } else {
-              res(camelcaseKeys(result));
+              res({ data: camelcaseKeys(result), status: statusCodes.NORMAL });
             }
           }
         );
@@ -218,17 +249,26 @@ let bModel = {
 
     if (!modelRef.hasChild) {
       finalP = mainP;
+      return finalP;
     } else {
-      let finalP = mainP.then((deleteOutput) => {
+      let finalP = mainP.then((deleteResponse) => {
+        const deleteOutput = deleteResponse.data;
+
         return new Promise(function (res_2, rej_2) {
           conn.query(
             `delete from ${modelRef.childTable} where ${modelRef.child_link} = ?`,
             [id],
             function (err, result, fields) {
               if (err) {
-                rej_2(err);
+                rej_2({
+                  status: statusCodes.INTERNAL_SERVER_ERROR,
+                  requestError: err,
+                });
               } else {
-                res_2(camelcaseKeys(result));
+                res_2({
+                  data: camelcaseKeys(result),
+                  status: statusCodes.INTERNAL_SERVER_ERROR,
+                });
               }
             }
           );
@@ -266,16 +306,19 @@ let bModel = {
 
     let mainP = startTransaction(conn).then((trxnstart) => {
       //Update of header
-      log("TRx started, getting to next stage :" + trxnstart);
+      log("TRx started, getting to next stage :", trxnstart);
       return new Promise(function (res, rej) {
         conn.query(
           `update ${modelRef.tableName} set ? where id = ?`,
           [snakeCaseKeys(modifiedSIABaseModelP), id],
           function (err, result, fields) {
             if (err) {
-              rej(err);
+              rej({
+                requestError: err,
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+              });
             } else {
-              res(camelcaseKeys(result));
+              res({ data: camelcaseKeys(result), status: statusCodes.NORMAL });
             }
           }
         );
@@ -311,7 +354,8 @@ Modes :
     } else {
       finalP = mainP.then(
         (updateRes) => {
-          log("parent Id" + util.inspect(id));
+          log("parent Id", id);
+
           return Promise.all(
             modifiedSIABaseModel[camelCase(modelRef.childTable)].map(
               (childRowWrap) => {
@@ -319,7 +363,8 @@ Modes :
                 let childRowData = childRowWrap.data;
                 let childMode = childRowWrap.mode;
 
-                log("snakecase child_link" + snakeCase(modelRef.child_link));
+                log("child_link :", modelRef.child_link);
+                log("snakecase child_link :" + snakeCase(modelRef.child_link));
 
                 Object.assign(childRowM, snakeCaseKeys(childRowData), {
                   [snakeCase(modelRef.child_link)]: id,
@@ -343,7 +388,10 @@ Modes :
                         [rowForUpdate, childRowData.id],
                         function (err, result) {
                           if (err) {
-                            rej(err);
+                            rej({
+                              requestError: err,
+                              status: statusCodes.INTERNAL_SERVER_ERROR,
+                            });
                           } else {
                             res(camelcaseKeys(result));
                           }
@@ -364,9 +412,14 @@ Modes :
                         rowForInsert,
                         function (err, result) {
                           if (err) {
-                            rej(err);
+                            rej({
+                              requestErrr: err,
+                              status: statusCodes.INTERNAL_SERVER_ERROR,
+                            });
                           } else {
-                            res({ result: result.insertId });
+                            res({
+                              id: result.insertId,
+                            });
                           }
                         }
                       );
@@ -381,7 +434,10 @@ Modes :
                         [childRowData.id],
                         function (err, result) {
                           if (err) {
-                            rej(err);
+                            rej({
+                              requestError: err,
+                              status: statusCodes.INTERNAL_SERVER_ERROR,
+                            });
                           } else {
                             res(camelcaseKeys(result));
                           }
@@ -392,7 +448,11 @@ Modes :
 
                     //delete case
                     default: {
-                      rej("Unsupported mode for update of child record");
+                      rej({
+                        requestError:
+                          "Unsupported mode for update of child record",
+                        status: statusCodes.INTERNAL_SERVER_ERROR,
+                      });
                       break;
                     }
 
@@ -412,11 +472,17 @@ Modes :
         log(
           "update operation success, tryng to commit " + util.inspect(result)
         );
-        return commitTransaction(conn, result);
+        return commitTransaction(conn, {
+          data: { id },
+          status: statusCodes.NORMAL,
+        });
       },
       (updateErr) => {
-        log("update operation failed, trying to rollback");
-        return rollbackTransaction(conn, updateErr);
+        log("update operation failed, trying to rollback", updateErr);
+        return rollbackTransaction(conn, {
+          requestError: util.inspect(updateErr),
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+        });
       }
     );
 
@@ -509,16 +575,26 @@ Modes :
 
   */
 
+    log(
+      "Parent SQL :",
+      `select * from ${modelRef.tableName} where ${attribName} = ?`,
+      attribValue
+    );
     const parentResults = await queryPromise(
       `select * from ${modelRef.tableName} where ${attribName} = ?`,
       [attribValue]
     ).then((res) => camelcaseKeys(res));
 
+    log("parent results :", parentResults);
+
     if (!this.hasChild) {
-      return parentResults;
+      return {
+        data: parentResults,
+        status: statusCodes.NORMAL,
+      };
     }
 
-    return await Promise.all(
+    const consolidatedRows = await Promise.all(
       parentResults.map((cv) => {
         return queryPromise(
           `select * from ${modelRef.childTable} 
@@ -534,11 +610,21 @@ Modes :
           (rej) => {
             log("Error in create", rej);
             //#MASK SQL errors
-            return Promise.reject("Unexpected server error, contact Admin");
+            return Promise.reject({
+              requestError: "Unexpected server error, contact Admin",
+              status: statusCodes.INTERNAL_SERVER_ERROR,
+            });
           }
         );
       })
     );
+
+    log("consolidatedRows :", consolidatedRows);
+
+    return {
+      data: consolidatedRows,
+      status: statusCodes.NORMAL,
+    };
   },
 };
 

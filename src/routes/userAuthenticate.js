@@ -1,5 +1,5 @@
 const express = require("express");
-const log = global.log;
+const { log } = require("../../config/winston");
 const util = require("util");
 var bouncer = require("express-bouncer")(500, 900000);
 const { userModel } = require("../models/userModel");
@@ -239,8 +239,9 @@ userAuth.post("/login", bouncer.block, function (req, res) {
 
               userModel.getById(id).then(
                 (rs) => {
-                  log("user rs" + util.inspect(rs));
+                  log("user rs 2 :" + util.inspect(rs));
                   // log('user rs'+util.inspect(rs));
+                  log("-----------------");
 
                   log(
                     "CHECK*",

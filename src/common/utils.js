@@ -2,8 +2,10 @@
 //function docPropUpdater(prop, doc, ignoreFields, copyAllFields) {
 // const winston = require("../../config/winston");
 
-const log = global.log;
-const errLog = global.errLog;
+const { log } = require("../../config/winston");
+
+// const log = global.log;
+// const errLog = global.errLog;
 //no use export - just a place holder
 
 const { produce } = require("immer");
@@ -11,9 +13,10 @@ const { produce } = require("immer");
 /*
 
 {
-  status : "This field will be sent by the model but stripped off by the router before forwarding - 200/400/401/404/500"
-  result : {
-   // reflect back columns 
+  status : "This field will be sent by the model but stripped off by the router before forwarding
+  data : {
+   // whatever data to be sent.
+   // will be fields or array of records in case of get request
   },
   requestError : {
    // Request level failure 
@@ -26,6 +29,8 @@ const { produce } = require("immer");
 }
 
 */
+
+/*
 
 function internalErrorMsg() {
   return {
@@ -56,7 +61,7 @@ function resourceNotFoundErrorMsg(error) {
   };
 }
 
-/* Response should have everything but status field*/
+// Response should have everything but status field
 function normalResponse(response) {
   return {
     status: 200,
@@ -64,11 +69,27 @@ function normalResponse(response) {
   };
 }
 
+*/
+
+const statusCodes = {
+  INTERNAL_SERVER_ERROR: 500,
+  NORMAL: 200,
+  INVALID_REQUEST: 400,
+  NO_AUTHORIZATION: 401,
+  RESOURCE_NOT_FOUND: 404,
+  FORBIDDEN: 403,
+};
+
 //Impure, sents a response
 function responseHandler(httpRes, respObject) {
+  //It is expected that response handler is always given an object with status field
   if (respObject.status == null) {
-    httpRes.status(500).json({
-      REQUEST_ERROR:
+    const e = new Error();
+    log("Error stack :", e.stack);
+    // console.log("Error stack:", e.stack);
+
+    httpRes.status(statusCodes.INTERNAL_SERVER_ERROR).json({
+      requestError:
         "Unexpected error while processing the request, please contact support",
     });
   } else {
@@ -80,11 +101,16 @@ function responseHandler(httpRes, respObject) {
   }
 }
 
+// module.exports = {
+//   internalErrorMsg,
+//   badRequestErrorMsg,
+//   authorizationErrorMsg,
+//   resourceNotFoundErrorMsg,
+//   normalResponse,
+//   responseHandler,
+// };
+
 module.exports = {
-  internalErrorMsg,
-  badRequestErrorMsg,
-  authorizationErrorMsg,
-  resourceNotFoundErrorMsg,
-  normalResponse,
+  statusCodes,
   responseHandler,
 };

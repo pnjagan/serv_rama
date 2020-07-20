@@ -2,19 +2,34 @@ const jwt = require("jsonwebtoken");
 const config = require("config");
 const { userModel } = require("../models/userModel");
 const util = require("util");
-const log = global.log;
+const { log } = require("../../config/winston");
+
+const { responseHandler, statusCodes } = require("../common/utils");
+
 let fs = require("fs");
 
-function verifyToken(req, res, next) {
+function verifyToken(request, response, next) {
   var token =
-    req.body.token || req.query.token || req.headers["x-access-token"];
+    request.body.token ||
+    request.query.token ||
+    request.headers["x-access-token"];
 
   log("TOKEN SENT :" + token);
   if (!token) {
-    return res.status(403).send({
-      success: false,
-      message: "No token provided",
-    });
+    responseHandler(
+      response,
+
+      {
+        status: statusCodes.FORBIDDEN,
+        requestError: "No token provided",
+      }
+    );
+    return;
+
+    // return res.status(403).send({
+    //   success: false,
+    //   message: "No token provided",
+    // });
   }
 
   new Promise((res, rej) => {
@@ -37,10 +52,14 @@ function verifyToken(req, res, next) {
         if (err) {
           log("Error from jwt verity :" + err);
 
-          res.json({
-            success: false,
-            message: "Failed to authenticate token",
-          });
+          responseHandler(
+            response,
+
+            {
+              status: statusCodes.FORBIDDEN,
+              requestError: "Failed to authenticate token",
+            }
+          );
         }
 
         let { id } = decoded;
@@ -49,22 +68,30 @@ function verifyToken(req, res, next) {
         userModel.getById(id).then(
           (rs) => {
             log("user rs" + util.inspect(rs));
-            log("user rs" + util.inspect(rs));
 
-            if (rs.length === 1) {
+            if (rs.data.length === 1) {
+              log("Next called in Token handler");
               next();
             } else {
-              res.json({
-                success: false,
-                message: "user is not valid",
-              });
+              responseHandler(
+                response,
+
+                {
+                  status: statusCodes.FORBIDDEN,
+                  requestError: "user is not valid",
+                }
+              );
             }
           },
           (err) => {
-            res.json({
-              success: false,
-              message: "UnExpected error",
-            });
+            responseHandler(
+              response,
+
+              {
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+                requestError: "Unexpected error",
+              }
+            );
           }
         ); // get userByID ends
       } //Token verify call back function

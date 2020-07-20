@@ -30,3 +30,6 @@ yarn-error.log*
 
 #dont commit keys
 *.key*
+
+#dont commit temp files of odt
+*odt#

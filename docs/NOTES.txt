@@ -90,3 +90,14 @@ This structure common for all the
     */
   }
 }
+
+Let model send only the result in Good case, bad case can be identified 
+
+
+yarn add eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin --dev
+------------------
+Key testing 30-Jun
+  - create flow of customer - passed
+  - all flow of parameter - passed
+  - all flow of invoice -  Update passed  :: query passed, create passed, delete passed
+     -for inv update, send empty [] for lines if you do not intend to update any of the lines.

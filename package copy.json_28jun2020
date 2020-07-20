@@ -3,16 +3,11 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "start_1": "export NODE_ENV=development&& nodemon .",
-    "test_1": "echo \"Error: no test specified\" && exit 1",
-    "build_1": "tsc -p .",
-    "start_2": "node ./dist/src/server.js",
-    "build": "tsc -p .",
-    "start": "export NODE_ENV=development&& nodemon ."
+    "start": "export NODE_ENV=development&& nodemon .",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@types/express": "^4.17.6",
-    "@types/node": "^14.0.14",
+    "@types/node": "^14.0.6",
     "bcrypt": "^4.0.1",
     "camelcase": "^5.3.1",
     "camelcase-keys": "^6.2.2",

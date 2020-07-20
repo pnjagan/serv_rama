@@ -1,5 +1,5 @@
-let conn = global.db;
-const log = global.log;
+const conn = require("../common/dbconn").db;
+const { log } = require("../../config/winston");
 
 function queryPromise(sql, binds) {
   return new Promise((res, rej) => {
