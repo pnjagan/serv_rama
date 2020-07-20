@@ -191,7 +191,7 @@ let bModel = {
             });
           })
         ).then((res) => {
-          return { parentId };
+          return { data: { id: parentId }, status: statusCodes.NORMAL };
         });
       });
     }
@@ -202,10 +202,7 @@ let bModel = {
         log(
           "insert operation success, tryng to commit " + util.inspect(result)
         );
-        return commitTransaction(conn, {
-          data: { id: result.parentId },
-          status: statusCodes.NORMAL,
-        });
+        return commitTransaction(conn, result);
       },
       (insertErr) => {
         log("insert operation failed, trying to rollback");
