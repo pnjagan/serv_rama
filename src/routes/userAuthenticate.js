@@ -18,6 +18,8 @@ const jwt = require("jsonwebtoken");
 let fs = require("fs");
 const config = require("config");
 
+const { statusCodes, responseHandler } = require("../common/utils");
+
 //@user-auth
 
 let userAuth = express.Router();
@@ -40,15 +42,21 @@ bouncer.blocked = function (req, res, next, remaining) {
 let saltRounds = 10;
 // let userModel = new User();
 
-userAuth.post("/signup", bouncer.block, function (req, res) {
-  const userData = req.body;
+userAuth.post("/signup", bouncer.block, function (request, response) {
+  const userData = request.body;
   // const password = req.body.password;
   log("Inside signup");
 
   //using weak equals to check for both undefined and null
   if (userData.userLogin == undefined || userData.password == undefined) {
     log("login details invalid");
-    res.status(500).json({ message: "Authentication failed.!" });
+
+    responseHandler(response, {
+      status: statusCodes.INVALID_REQUEST,
+      requestError: "Invalid user details",
+    });
+
+    // res.status(500).json({ message: "Authentication failed.!" });
     return;
   }
 
@@ -58,9 +66,15 @@ userAuth.post("/signup", bouncer.block, function (req, res) {
     (userRS) => {
       log("user result :" + util.inspect(userRS));
 
-      if (userRS.length !== 0) {
+      if (userRS.data.length !== 0) {
         log("User exists");
-        res.status(500).json({ message: "User already exists.!" });
+
+        responseHandler(response, {
+          status: statusCodes.INVALID_REQUEST,
+          requestError: "User already exists.!",
+        });
+
+        // res.status(500).json({ message: "User already exists.!" });
         return;
       }
 
@@ -76,26 +90,47 @@ userAuth.post("/signup", bouncer.block, function (req, res) {
           userDataDB.userHash = hash;
           userModel.create(userDataDB).then(
             (s) => {
-              bouncer.reset(req);
-              res.status(200).json({ message: "user created successfully!" });
+              bouncer.reset(request);
+
+              responseHandler(response, {
+                status: statusCodes.NORMAL,
+                message: "user created successfully!",
+              });
             },
-            (r) => res.json({ message: "user creation failed!" })
+            (r) => {
+              //res.json({ message: "user creation failed!" })
+              responseHandler(response, {
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+                requestError: "user creation failed!",
+              });
+            }
           );
         } else {
           log("hash creation failed!" + err);
-          res.json({ message: "user creation failed!" });
+
+          responseHandler(response, {
+            status: statusCodes.INTERNAL_SERVER_ERROR,
+            requestError: "user creation failed!",
+          });
+
+          // res.json({ message: "user creation failed!" });
         }
       });
     },
     (err) => {
       log("error in get user by Attrib" + err);
-      res.json({ message: "user creation failed!" });
+
+      // res.json({ message: "user creation failed!" });
+      responseHandler(response, {
+        status: statusCodes.INTERNAL_SERVER_ERROR,
+        requestError: "user creation failed!",
+      });
     }
   );
 });
 
-userAuth.post("/login", bouncer.block, function (req, res) {
-  const userData = req.body;
+userAuth.post("/login", bouncer.block, function (request, response) {
+  const userData = request.body;
   // const password = req.body.password;
 
   //log("Complete REQ", req); // prints too much details
@@ -106,7 +141,13 @@ userAuth.post("/login", bouncer.block, function (req, res) {
     (userData.password == undefined && userData.jwtToken == undefined)
   ) {
     log("login details invalid");
-    res.status(401).json({ message: "Authentication failed.!" });
+
+    responseHandler(response, {
+      status: statusCodes.NO_AUTHORIZATION,
+      requestError: "Authentication failed.!",
+    });
+
+    // res.status(401).json({ message: "Authentication failed.!" });
     return;
   }
 
@@ -117,19 +158,26 @@ userAuth.post("/login", bouncer.block, function (req, res) {
     userModel.getByAttribute("user_login", userData.userLogin).then(
       (userRS) => {
         log("user result :" + util.inspect(userRS));
+        log(" userRS.data.length :", userRS.data.length);
 
-        if (userRS.length !== 1) {
+        if (userRS.data.length !== 1) {
           log("user login does not exist");
 
           // .set({
           //     'WWW-Authenticate': 'Basic realm="Access to SIA Dev"'
           //   }).
-          res.status(401).json({ message: "Invalid login!" });
+
+          responseHandler(response, {
+            status: statusCodes.NO_AUTHORIZATION,
+            requestError: "Invalid login!",
+          });
+
+          // res.status(401).json({ message: "Invalid login!" });
           return;
         }
 
         log("User does exist");
-        let userDataDB = userRS[0]; //JSON.parse(JSON.stringify(snakeCaseKeys(userData)));
+        let userDataDB = userRS.data[0]; //JSON.parse(JSON.stringify(snakeCaseKeys(userData)));
         // delete userDataDB.password;
         // delete userDataDB.id;
         log("user to validate :", JSON.stringify(userDataDB));
@@ -146,24 +194,36 @@ userAuth.post("/login", bouncer.block, function (req, res) {
         ) {
           if (!resBcrypt) {
             log("password to hash check failed" + errBcrypt);
-            res.status(401).json({ message: "Authentication failed.!" });
+
+            responseHandler(response, {
+              status: statusCodes.NO_AUTHORIZATION,
+              requestError: "Authentication failed.!",
+            });
+
+            // res.status(401).json({ message: "Authentication failed.!" });
             return;
           }
 
           generateToken(userDataDB.id).then(
             (s) => {
               log("Token generated! :" + s);
-              bouncer.reset(req);
-              res.status(200).json({
-                jwtToken: s,
-                userLogin: userDataDB.userLogin,
-                userName: userDataDB.userName,
+              bouncer.reset(request);
+
+              responseHandler(response, {
+                status: statusCodes.NORMAL,
+                data: {
+                  jwtToken: s,
+                  userLogin: userDataDB.userLogin,
+                  userName: userDataDB.userName,
+                },
               });
             },
             (r) => {
               log("Error in token creation");
-              res.status(500).json({
-                message: "Unexpected Login failure, please try again.",
+
+              responseHandler(response, {
+                status: statusCodes.INTERNAL_SERVER_ERROR,
+                requestError: "Unexpected Login failure, please try again.",
               });
             }
           );
@@ -171,9 +231,11 @@ userAuth.post("/login", bouncer.block, function (req, res) {
       },
       (err) => {
         log("error in get user by Attrib" + err);
-        res
-          .status(500)
-          .json({ message: "Unexpected Login failure, please try again." });
+
+        responseHandler(response, {
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+          requestError: "Unexpected Login failure, please try again.",
+        });
       }
     );
   } //Password based Authenticate
@@ -186,18 +248,24 @@ userAuth.post("/login", bouncer.block, function (req, res) {
       (userRS) => {
         log("user result :" + util.inspect(userRS));
 
-        if (userRS.length !== 1) {
+        if (userRS.data.length !== 1) {
           log("user login does not exist");
 
           // .set({
           //     'WWW-Authenticate': 'Basic realm="Access to SIA Dev"'
           //   }).
-          res.status(401).json({ message: "Invalid login!" });
+
+          responseHandler(response, {
+            status: statusCodes.NO_AUTHORIZATION,
+            requestError: "Invalid login!",
+          });
+
+          // res.status(401).json({ message: "Invalid login!" });
           return;
         }
 
         log("User does exist");
-        let userDataDB = userRS[0]; //JSON.parse(JSON.stringify(snakeCaseKeys(userData)));
+        let userDataDB = userRS.data[0]; //JSON.parse(JSON.stringify(snakeCaseKeys(userData)));
         // delete userDataDB.password;
         // delete userDataDB.id;
         log("user to validate :" + util.inspect(userDataDB));
@@ -225,7 +293,13 @@ userAuth.post("/login", bouncer.block, function (req, res) {
                 log("Error from jwt verity :" + err);
 
                 log("password to hash check failed", userData.jwtToken);
-                res.status(401).json({ message: "Authentication failed.!" });
+
+                responseHandler(response, {
+                  status: statusCodes.NO_AUTHORIZATION,
+                  requestError: "Authentication failed.!",
+                });
+
+                // res.status(401).json({ message: "Authentication failed.!" });
                 return;
 
                 // res.json({
@@ -235,7 +309,7 @@ userAuth.post("/login", bouncer.block, function (req, res) {
               }
 
               let { id } = decoded;
-              log("DEcoded User :" + id);
+              log("DEcoded User :", id);
 
               userModel.getById(id).then(
                 (rs) => {
@@ -245,47 +319,60 @@ userAuth.post("/login", bouncer.block, function (req, res) {
 
                   log(
                     "CHECK*",
-                    rs.length,
+                    rs.data.length,
                     "*",
-                    rs[0].userLogin,
+                    rs.data[0].userLogin,
                     "*",
                     userData.userLogin,
                     "*"
                   );
+
                   log(
                     "check bool *",
-                    rs.length === 1 && rs[0].userLogin === userData.userLogin
+                    rs.data.length === 1 &&
+                      rs.data[0].userLogin === userData.userLogin
                   );
 
                   if (
-                    rs.length === 1 &&
-                    rs[0].userLogin === userData.userLogin
+                    rs.data.length === 1 &&
+                    rs.data[0].userLogin === userData.userLogin
                   ) {
                     log("Token validated! :");
-                    bouncer.reset(req);
-                    res.status(200).json({
-                      jwtToken: userData.jwtToken,
-                      userLogin: rs[0].userLogin,
-                      userName: rs[0].userName,
+                    bouncer.reset(request);
+
+                    responseHandler(response, {
+                      status: statusCodes.NORMAL,
+                      data: {
+                        jwtToken: userData.jwtToken,
+                        userLogin: rs.data[0].userLogin,
+                        userName: rs.data[0].userName,
+                      },
                     });
                   } else {
                     log(
                       "TOken error",
-                      rs.length,
-                      rs[0].userLogin,
+                      rs.data.length,
+                      rs.data[0].userLogin,
                       userData.userLogin
                     );
 
-                    res
-                      .status(401)
-                      .json({ message: "Authentication failed.!" });
+                    responseHandler(response, {
+                      status: statusCodes.NO_AUTHORIZATION,
+                      requestError: "Authentication failed.!",
+                    });
                   }
                 },
                 (err) => {
                   log("Error in token validation");
-                  res.status(500).json({
-                    message: "Unexpected Login failure, please try again.",
+
+                  responseHandler(response, {
+                    status: statusCodes.INTERNAL_SERVER_ERROR,
+                    requestError: "Unexpected Login failure, please try again.",
                   });
+
+                  // res.status(500).json({
+                  //   message: "Unexpected Login failure, please try again.",
+                  // });
                 }
               ); // get userByID ends
             } //Token verify call back function
@@ -295,9 +382,15 @@ userAuth.post("/login", bouncer.block, function (req, res) {
       },
       (err) => {
         log("error in get user by Attrib" + err);
-        res
-          .status(500)
-          .json({ message: "Unexpected Login failure, please try again." });
+
+        responseHandler(response, {
+          status: statusCodes.INTERNAL_SERVER_ERROR,
+          requestError: "Unexpected Login failure, please try again.",
+        });
+
+        // res
+        //   .status(500)
+        //   .json({ message: "Unexpected Login failure, please try again." });
       }
     );
   } //JWT based Authenticate

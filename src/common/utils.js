@@ -83,6 +83,8 @@ const statusCodes = {
 //Impure, sents a response
 function responseHandler(httpRes, respObject) {
   //It is expected that response handler is always given an object with status field
+
+  log("respObject :", respObject);
   if (respObject.status == null) {
     const e = new Error();
     log("Error stack :", e.stack);
