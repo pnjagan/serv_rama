@@ -19,10 +19,6 @@ const { responseHandler } = require("../common/utils");
 
 //https://medium.com/@salonimalhotra1ind/pagination-in-node-express-mysql-eda52bf605b7
 
-//Probably login is mandatory and can be done after APP is built in react.
-
-// const normalResp = (resp) => ({ status: 200, result: resp });
-
 function buildBaseRouter(model) {
   const baseRouter = express.Router();
 

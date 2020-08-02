@@ -10,11 +10,21 @@ let fs = require("fs");
 
 function verifyToken(request, response, next) {
   var token =
+    request.headers["x-access-token"] ||
     request.body.token ||
-    request.query.token ||
-    request.headers["x-access-token"];
+    request.query.token;
 
-  log("TOKEN SENT :" + token);
+  log(
+    "TOKEN SENT Token:",
+    token,
+    "\n Hdrs :",
+    request.headers["x-access-token"],
+    "\n Body Token: ",
+    request.body.token,
+    "\n Query token :",
+    request.query.token
+  );
+
   if (!token) {
     responseHandler(
       response,

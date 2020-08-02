@@ -59,6 +59,11 @@ app.use("/items", buildBaseRouter(buildBaseModel("items")));
 
 app.use("/invoices", buildBaseRouter(buildBaseModel("invoices")));
 
+const { recordGroupRoute } = require("./routes/recordGroupRoute");
+const { rgModel } = require("./models/recordGroupModel");
+
+app.use("/recordgroup", recordGroupRoute(rgModel));
+
 //Router Ends
 
 log("processing request - Rama nama jayam");

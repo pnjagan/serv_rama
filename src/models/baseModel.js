@@ -205,11 +205,8 @@ let bModel = {
         return commitTransaction(conn, result);
       },
       (insertErr) => {
-        log("insert operation failed, trying to rollback");
-        return rollbackTransaction(conn, {
-          requestError: "Insert operation failed",
-          status: statusCodes.INTERNAL_SERVER_ERROR,
-        });
+        log("insert operation failed, trying to rollback :", insertErr);
+        return rollbackTransaction(conn, insertErr);
       }
     );
   },
@@ -232,8 +229,9 @@ let bModel = {
           [id],
           function (err, result, fields) {
             if (err) {
+              log("Error in delete table:", modelRef.tableName, " err :", err);
               rej({
-                requestError: err,
+                requestError: "Unexpected error during entity delete",
                 status: statusCodes.INTERNAL_SERVER_ERROR,
               });
             } else {
@@ -257,14 +255,20 @@ let bModel = {
             [id],
             function (err, result, fields) {
               if (err) {
+                log(
+                  "Error in delete table:",
+                  modelRef.childTable,
+                  " err :",
+                  err
+                );
                 rej_2({
                   status: statusCodes.INTERNAL_SERVER_ERROR,
-                  requestError: err,
+                  requestError: "unexpected error during entity delete",
                 });
               } else {
                 res_2({
                   data: camelcaseKeys(result),
-                  status: statusCodes.INTERNAL_SERVER_ERROR,
+                  status: statusCodes.NORMAL,
                 });
               }
             }
@@ -310,8 +314,17 @@ let bModel = {
           [snakeCaseKeys(modifiedSIABaseModelP), id],
           function (err, result, fields) {
             if (err) {
+              log(
+                "ERROR in update for :",
+                modelRef.tableName,
+                " Error message is ",
+                err
+              );
+
+              //DO not send teh actual SQL error as response
+
               rej({
-                requestError: err,
+                requestError: "Unexpected error when updating the entity",
                 status: statusCodes.INTERNAL_SERVER_ERROR,
               });
             } else {
@@ -385,8 +398,16 @@ Modes :
                         [rowForUpdate, childRowData.id],
                         function (err, result) {
                           if (err) {
+                            log(
+                              "ERROR in update for :",
+                              modelRef.childTable,
+                              " Error message is ",
+                              err
+                            );
+
                             rej({
-                              requestError: err,
+                              requestError:
+                                "Unexpected error when updating the entity",
                               status: statusCodes.INTERNAL_SERVER_ERROR,
                             });
                           } else {
@@ -409,8 +430,16 @@ Modes :
                         rowForInsert,
                         function (err, result) {
                           if (err) {
+                            log(
+                              "ERROR in update for :",
+                              modelRef.childTable,
+                              " Error message is ",
+                              err
+                            );
+
                             rej({
-                              requestErrr: err,
+                              requestErrr:
+                                "Unexpected error when updating the entity",
                               status: statusCodes.INTERNAL_SERVER_ERROR,
                             });
                           } else {
@@ -431,8 +460,16 @@ Modes :
                         [childRowData.id],
                         function (err, result) {
                           if (err) {
+                            log(
+                              "ERROR in update for :",
+                              modelRef.childTable,
+                              " Error message is ",
+                              err
+                            );
+
                             rej({
-                              requestError: err,
+                              requestError:
+                                "Unexpected error when updating the entity",
                               status: statusCodes.INTERNAL_SERVER_ERROR,
                             });
                           } else {
@@ -464,6 +501,7 @@ Modes :
     } //Has CHild else
     //ACTUAL INSERT END
 
+    //Re-constructing the message again here for happy-go case is to mask the parent-child nested response
     return finalP.then(
       (result) => {
         log(
@@ -476,10 +514,7 @@ Modes :
       },
       (updateErr) => {
         log("update operation failed, trying to rollback", updateErr);
-        return rollbackTransaction(conn, {
-          requestError: util.inspect(updateErr),
-          status: statusCodes.INTERNAL_SERVER_ERROR,
-        });
+        return rollbackTransaction(conn, updateErr);
       }
     );
 
