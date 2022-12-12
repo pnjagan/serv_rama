@@ -18,7 +18,7 @@
     "camelcase-keys": "^6.2.2",
     "config": "^3.3.1",
     "cors": "^2.8.5",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "express-bouncer": "^0.2.0",
     "immer": "^6.0.9",
     "jsonwebtoken": "^8.5.1",
